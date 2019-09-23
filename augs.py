@@ -1,7 +1,7 @@
 import albumentations as albu
 
 
-def to_tensor(x):
+def to_tensor(x, **kwargs):
     """
     Convert image or mask.
     """

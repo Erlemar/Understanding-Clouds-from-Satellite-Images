@@ -101,10 +101,10 @@ class CloudDataset(Dataset):
         self.img_ids = img_ids
         self.transforms = transforms
         self.preprocessing = preprocessing
-        if self.preprocessing.__name__ == 'get_training_augmentation1':
-            self.dir_name = f"{self.path}/preload_1_{self.transforms[-1].height}_{self.transforms[-1].width}"
-        else:
-            self.dir_name = f"{self.path}/preload_{self.transforms[-1].height}_{self.transforms[-1].width}"
+        # if self.transforms.__name__ == 'get_training_augmentation1':
+        #     self.dir_name = f"{self.path}/preload_1_{self.transforms[-1].height}_{self.transforms[-1].width}"
+        # else:
+        self.dir_name = f"{self.path}/preload_1_{self.transforms[-1].height}_{self.transforms[-1].width}"
 
         self.preload = preload
         self.preloaded = False
@@ -149,7 +149,7 @@ class CloudDataset(Dataset):
         return len(self.img_ids)
 
 
-def prepare_loaders(path: str = '', bs: int = 4, num_workers: int = 0, preprocessing_fn=None):
+def prepare_loaders(path: str = '', bs: int = 4, num_workers: int = 0, preprocessing_fn=None, preload: bool = False):
 
     train = pd.read_csv(f'{path}/train.csv')
     train['label'] = train['Image_Label'].apply(lambda x: x.split('_')[1])
@@ -166,19 +166,24 @@ def prepare_loaders(path: str = '', bs: int = 4, num_workers: int = 0, preproces
     sub['im_id'] = sub['Image_Label'].apply(lambda x: x.split('_')[0])
     test_ids = sub['Image_Label'].apply(lambda x: x.split('_')[0]).drop_duplicates().values
 
+    if preload:
+        _ = CloudDataset(path=path, df=train, datatype='train', img_ids=id_mask_count['img_id'].values,
+                         transforms=get_training_augmentation1(), preprocessing=get_preprocessing(preprocessing_fn),
+                         preload=preload)
+
     train_dataset = CloudDataset(path=path, df=train, datatype='train', img_ids=train_ids,
                                  transforms=get_training_augmentation1(),
-                                 preprocessing=get_preprocessing(preprocessing_fn), preload=True)
+                                 preprocessing=get_preprocessing(preprocessing_fn), preload=preload)
     valid_dataset = CloudDataset(path=path, df=train, datatype='valid', img_ids=valid_ids,
                                  transforms=get_validation_augmentation(),
-                                 preprocessing=get_preprocessing(preprocessing_fn), preload=True)
+                                 preprocessing=get_preprocessing(preprocessing_fn), preload=preload)
 
     train_loader = DataLoader(train_dataset, batch_size=bs, shuffle=True, num_workers=num_workers)
     valid_loader = DataLoader(valid_dataset, batch_size=bs, shuffle=False, num_workers=num_workers)
 
     test_dataset = CloudDataset(path=path, df=sub, datatype='test', img_ids=test_ids,
                                 transforms=get_validation_augmentation(),
-                                preprocessing=get_preprocessing(preprocessing_fn), preload=True)
+                                preprocessing=get_preprocessing(preprocessing_fn), preload=preload)
     test_loader = DataLoader(test_dataset, batch_size=bs // 2, shuffle=False, num_workers=0)
 
     loaders = {

@@ -17,6 +17,7 @@ from predict import predict
 from losses.losses import FocalLoss, BCEMulticlassDiceLoss
 from losses.lovasz_losses import lovasz_softmax
 warnings.filterwarnings("once")
+from catalyst import utils
 
 
 if __name__ == '__main__':
@@ -29,30 +30,33 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Train model for understanding_cloud_organization competition")
     parser.add_argument("--path", help="path to files", type=str, default='f:/clouds')
     # https://github.com/qubvel/segmentation_models.pytorch
-    parser.add_argument("--encoder", help="u-net encoder", type=str, default='se_resnext50_32x4d')
+    parser.add_argument("--encoder", help="u-net encoder", type=str, default='resnet50')
     parser.add_argument("--encoder_weights", help="pre-training dataset", type=str, default='imagenet')
     parser.add_argument("--DEVICE", help="device", type=str, default='CUDA')
+    parser.add_argument("--scheduler", help="scheduler", type=str, default='ReduceLROnPlateau')
+    parser.add_argument("--loss", help="loss", type=str, default='BCEDiceLoss')
+    parser.add_argument("--logdir", help="logdir", type=str, default=None)
     parser.add_argument("--num_workers", help="num_workers", type=int, default=0)
     parser.add_argument("--bs", help="batch size", type=int, default=4)
     parser.add_argument("--lr", help="learning rate", type=int, default=1e-3)
     parser.add_argument("--lr_e", help="learning rate for decoder", type=int, default=1e-3)
     parser.add_argument("--num_epochs", help="number of epochs", type=int, default=100)
-    parser.add_argument("--separate_decoder", help="number of epochs", type=bool, default=True)
-    parser.add_argument("--scheduler", help="scheduler", type=str, default='ReduceLROnPlateau')
-    parser.add_argument("--loss", help="loss", type=str, default='BCEDiceLoss')
-    parser.add_argument("--multigpu", help="use multi-gpu", type=bool, default=True)
     parser.add_argument("--gradient_accumulation", help="gradient_accumulation steps", type=int, default=None)
-    parser.add_argument("--optimize_postprocess", help="to optimize postprocess", type=bool, default=True)
-    parser.add_argument("--make_prediction", help="to make prediction", type=bool, default=True)
+    parser.add_argument("--optimize_postprocess", help="to optimize postprocess", type=bool, default=False)
+    parser.add_argument("--train", help="train", type=bool, default=False)
+    parser.add_argument("--make_prediction", help="to make prediction", type=bool, default=False)
+    parser.add_argument("--preload", help="save processed data", type=bool, default=False)
+    parser.add_argument("--separate_decoder", help="number of epochs", type=bool, default=True)
+    parser.add_argument("--multigpu", help="use multi-gpu", type=bool, default=True)
 
     args = parser.parse_args()
 
     sub_name = f'Model_{args.encoder}_bs_{args.bs}_{str(datetime.datetime.now().date())}'
-    logdir = f"./logs/{sub_name}"
+    logdir = f"./logs/{sub_name}" if args.logdir is None else args.logdir
 
     preprocessing_fn = smp.encoders.get_preprocessing_fn(args.encoder, args.encoder_weights)
     loaders = prepare_loaders(path=args.path, bs=args.bs,
-                              num_workers=args.num_workers, preprocessing_fn=preprocessing_fn)
+                              num_workers=args.num_workers, preprocessing_fn=preprocessing_fn, preload=args.preload)
     test_loader = loaders['test']
     del loaders['test']
 
@@ -62,9 +66,9 @@ if __name__ == '__main__':
                               separate_decoder=args.separate_decoder, lr=args.lr, lr_e=args.lr_e)
 
     if args.scheduler == 'ReduceLROnPlateau':
-        scheduler = ReduceLROnPlateau(optimizer, factor=0.8, patience=3)
+        scheduler = ReduceLROnPlateau(optimizer, factor=0.3, patience=3)
     else:
-        scheduler = ReduceLROnPlateau(optimizer, factor=0.8, patience=3)
+        scheduler = ReduceLROnPlateau(optimizer, factor=0.3, patience=3)
 
     if args.loss == 'BCEDiceLoss':
         criterion = smp.utils.losses.BCEDiceLoss(eps=1.)
@@ -79,7 +83,6 @@ if __name__ == '__main__':
     else:
         criterion = smp.utils.losses.BCEDiceLoss(eps=1.)
 
-    runner = SupervisedRunner()
 
     if args.multigpu:
         model = nn.DataParallel(model)
@@ -89,24 +92,35 @@ if __name__ == '__main__':
     if args.gradient_accumulation:
         callbacks.append(OptimizerCallback(accumulation_steps=args.gradient_accumulation))
 
-    runner.train(
-        model=model,
-        criterion=criterion,
-        optimizer=optimizer,
-        scheduler=scheduler,
-        loaders=loaders,
-        callbacks=callbacks,
-        logdir=logdir,
-        num_epochs=args.num_epochs,
-        verbose=True
-    )
+    runner = SupervisedRunner()
+    if args.train:
+        runner.train(
+            model=model,
+            criterion=criterion,
+            optimizer=optimizer,
+            scheduler=scheduler,
+            loaders=loaders,
+            callbacks=callbacks,
+            logdir=logdir,
+            num_epochs=args.num_epochs,
+            verbose=True
+        )
 
     torch.cuda.empty_cache()
     gc.collect()
 
     if args.optimize_postprocess:
-        class_params = get_optimal_postprocess(loaders, runner, logdir)
+        del loaders['train']
+        checkpoint = utils.load_checkpoint(f'{logdir}/checkpoints/best.pth')
+        model.cuda()
+        utils.unpack_checkpoint(checkpoint, model=model)
+        runner = SupervisedRunner(model=model)
+        class_params = get_optimal_postprocess(loaders=loaders, runner=runner, logdir=logdir)
 
     if args.make_prediction:
         loaders['test'] = test_loader
+        checkpoint = utils.load_checkpoint(f'{logdir}/checkpoints/best.pth')
+        model.cuda()
+        utils.unpack_checkpoint(checkpoint, model=model)
+        runner = SupervisedRunner(model=model)
         predict(loaders=loaders, runner=runner, class_params=class_params, path=args.path, sub_name=sub_name)
