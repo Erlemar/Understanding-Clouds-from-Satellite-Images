@@ -129,7 +129,7 @@ def get_optimal_postprocess(loaders=None,
     valid_masks = []
     probabilities = np.zeros((2220, 350, 525))
     for i, (batch, output) in enumerate(zip(
-            loaders['infer'].dataset, runner.callbacks[1].predictions["logits"])):
+            loaders['infer'].dataset, runner.callbacks[0].predictions["logits"])):
         image, mask = batch
         for m in mask:
             if m.shape != (350, 525):
@@ -145,9 +145,9 @@ def get_optimal_postprocess(loaders=None,
     for class_id in range(4):
         print(class_id)
         attempts = []
-        for t in range(0, 100, 5):
+        for t in range(0, 100, 10):
             t /= 100
-            for ms in [0, 100, 1000, 5000, 10000, 11000, 14000, 15000, 20000, 25000]:
+            for ms in [0, 100, 1000, 5000, 10000, 11000, 14000, 15000, 16000, 18000, 19000, 20000, 21000, 23000, 25000, 27000, 30000, 50000]:
                 masks = []
                 for i in range(class_id, len(probabilities), 4):
                     probability = probabilities[i]

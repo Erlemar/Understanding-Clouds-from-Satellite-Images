@@ -360,11 +360,11 @@ def get_optimizer(optimizer: str = 'Adam',
         params = [{'params': model.parameters(), 'lr': lr}]
 
     if optimizer == 'Adam':
-        optimizer = optim.Adam(params, lr=0.001)
+        optimizer = optim.Adam(params, lr=lr)
     elif optimizer == 'RAdam':
-        optimizer = RAdam(params, lr=0.001)
+        optimizer = RAdam(params, lr=lr)
     elif optimizer == 'Ralamb':
-        optimizer = Ralamb(params, lr=0.001)
+        optimizer = Ralamb(params, lr=lr)
     else:
         raise ValueError('unknown base optimizer type')
 

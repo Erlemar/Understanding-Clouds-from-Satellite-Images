@@ -38,8 +38,6 @@ def predict(loaders=None,
                     probability = cv2.resize(probability, dsize=(525, 350), interpolation=cv2.INTER_LINEAR)
                 prediction, num_predict = post_process(sigmoid(probability), class_params[image_id % 4][0],
                                                        class_params[image_id % 4][1])
-                if num_predict == 0:
-                    encoded_pixels.append('')
                 else:
                     r = mask2rle(prediction)
                     encoded_pixels.append(r)
@@ -47,4 +45,4 @@ def predict(loaders=None,
 
     sub = pd.read_csv(f'{path}/sample_submission.csv')
     sub['EncodedPixels'] = encoded_pixels
-    sub.to_csv(f'submission_{sub_name}.csv', columns=['Image_Label', 'EncodedPixels'], index=False)
+    sub.to_csv(f'submissions/submission_{sub_name}.csv', columns=['Image_Label', 'EncodedPixels'], index=False)
