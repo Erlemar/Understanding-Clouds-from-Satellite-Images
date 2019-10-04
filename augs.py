@@ -4,12 +4,23 @@ import albumentations as albu
 def to_tensor(x, **kwargs):
     """
     Convert image or mask.
+
+    Args:
+        x:
+        **kwargs:
+
+    Returns:
+
     """
+
     return x.transpose(2, 0, 1).astype('float32')
 
 
 def get_training_augmentation(augmentation: str='default', image_size: tuple = (320, 640)):
     """
+    Get augmentations
+    There is a dictionary where values are different augmentation functions, so it easy to
+    switch between augmentations;
 
     Args:
         augmentation:
@@ -29,6 +40,14 @@ def get_training_augmentation(augmentation: str='default', image_size: tuple = (
 
 
 def get_training_augmentation0(image_size: tuple = (320, 640)):
+    """
+
+    Args:
+        image_size:
+
+    Returns:
+
+    """
     train_transform = [
         albu.HorizontalFlip(p=0.5),
         albu.ShiftScaleRotate(scale_limit=0.5, rotate_limit=0, shift_limit=0.1, p=0.5, border_mode=0),
@@ -41,6 +60,14 @@ def get_training_augmentation0(image_size: tuple = (320, 640)):
 
 
 def get_training_augmentation1(image_size: tuple = (320, 640)):
+    """
+
+    Args:
+        image_size:
+
+    Returns:
+
+    """
     train_transform = [
         albu.HorizontalFlip(p=0.5),
         albu.ShiftScaleRotate(scale_limit=0.3, rotate_limit=15, shift_limit=0.1, p=0.5, border_mode=0),
@@ -52,6 +79,14 @@ def get_training_augmentation1(image_size: tuple = (320, 640)):
 
 
 def get_training_augmentation2(image_size: tuple = (320, 640)):
+    """
+
+    Args:
+        image_size:
+
+    Returns:
+
+    """
     train_transform = [
         albu.Resize(*image_size),
         albu.HorizontalFlip(p=0.5),
@@ -65,7 +100,14 @@ def get_training_augmentation2(image_size: tuple = (320, 640)):
 
 
 def get_validation_augmentation(image_size: tuple = (320, 640)):
-    """Add paddings to make image shape divisible by 32"""
+    """
+
+    Args:
+        image_size:
+
+    Returns:
+
+    """
     test_transform = [
         albu.Resize(*image_size)
     ]

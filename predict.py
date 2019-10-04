@@ -36,8 +36,10 @@ def predict(loaders=None,
                 probability = probability.cpu().detach().numpy()
                 if probability.shape != (350, 525):
                     probability = cv2.resize(probability, dsize=(525, 350), interpolation=cv2.INTER_LINEAR)
-                prediction, num_predict = post_process(sigmoid(probability), class_params[image_id % 4][0],
+                    prediction, num_predict = post_process(sigmoid(probability), class_params[image_id % 4][0],
                                                        class_params[image_id % 4][1])
+                if num_predict == 0:
+                    encoded_pixels.append('')
                 else:
                     r = mask2rle(prediction)
                     encoded_pixels.append(r)

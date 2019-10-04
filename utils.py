@@ -9,12 +9,21 @@ def sigmoid(x):
     return 1 / (1 + np.exp(-x))
 
 
-def visualize(image, mask, original_image=None, original_mask=None):
+def visualize(image, mask, original_image=None, original_mask=None, fontsize: int = 14):
     """
     Plot image and masks.
     If two pairs of images and masks are passes, show both.
+
+    Args:
+        image: transformed image
+        mask: transformed mask
+        original_image:
+        original_mask:
+        fontsize:
+
+    Returns:
+
     """
-    fontsize = 14
     class_dict = {0: 'Fish', 1: 'Flower', 2: 'Gravel', 3: 'Sugar'}
 
     if original_image is None and original_mask is None:
@@ -44,8 +53,18 @@ def visualize(image, mask, original_image=None, original_mask=None):
 
 def visualize_with_raw(image, mask, original_image=None, original_mask=None, raw_image=None, raw_mask=None):
     """
-    Plot image and masks.
-    If two pairs of images and masks are passes, show both.
+    Similar to visualize function, but with post-processed image, mask.
+
+    Args:
+        image:
+        mask:
+        original_image:
+        original_mask:
+        raw_image:
+        raw_mask:
+
+    Returns:
+
     """
     fontsize = 14
     class_dict = {0: 'Fish', 1: 'Flower', 2: 'Gravel', 3: 'Sugar'}
@@ -77,6 +96,14 @@ def visualize_with_raw(image, mask, original_image=None, original_mask=None, raw
 def plot_with_augmentation(image, mask, augment):
     """
     Wrapper for `visualize` function.
+
+    Args:
+        image:
+        mask:
+        augment:
+
+    Returns:
+
     """
     augmented = augment(image=image, mask=mask)
     image_flipped = augmented['image']
@@ -84,10 +111,18 @@ def plot_with_augmentation(image, mask, augment):
     visualize(image_flipped, mask_flipped, original_image=image, original_mask=mask)
 
 
-def post_process(probability, threshold, min_size):
+def post_process(probability: np.array = None, threshold: float = 0.5, min_size: int = 10):
     """
     Post processing of each predicted mask, components with lesser number of pixels
     than `min_size` are ignored
+
+    Args:
+        probability: mask
+        threshold: threshold for processing
+        min_size: min_size for processing
+
+    Returns:
+
     """
     # don't remember where I saw it
     mask = cv2.threshold(probability, threshold, 1, cv2.THRESH_BINARY)[1]
@@ -102,7 +137,16 @@ def post_process(probability, threshold, min_size):
     return predictions, num
 
 
-def dice(img1, img2):
+def dice(img1: np.array, img2: np.array) -> float:
+    """
+    Calculate dice of two images
+    Args:
+        img1:
+        img2:
+
+    Returns:
+
+    """
     img1 = np.asarray(img1).astype(np.bool)
     img2 = np.asarray(img2).astype(np.bool)
 
@@ -115,6 +159,17 @@ def get_optimal_postprocess(loaders=None,
                             runner=None,
                             logdir: str = ''
                             ):
+    """
+    Calculate optimal thresholds for validation data.
+
+    Args:
+        loaders: loaders with necessary datasets
+        runner: runner
+        logdir: directory with model checkpoints
+
+    Returns:
+
+    """
     loaders['infer'] = loaders['valid']
 
     runner.infer(
